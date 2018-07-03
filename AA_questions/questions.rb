@@ -38,7 +38,15 @@ class User
         users.fname = ? AND users.lname = ?
     SQL
 
-    User.new(user)
+    User.new(user.first)
+  end
+
+  def authored_questions
+    Question.find_by_author_id(@id)
+  end
+
+  def authored_replies
+    Reply.find_by_user_id(@id)
   end
 
   def initialize(options)
@@ -62,6 +70,26 @@ class Question
     SQL
 
       Question.new(question.first) # user returns hash in an array
+  end
+
+  def self.find_by_author_id(author_id)
+    author = QuestionsDatabase.instance.execute(<<-SQL, author_id)
+      SELECT
+        *
+      FROM
+        questions
+      WHERE
+        questions.author_id = ?
+    SQL
+      author = author.map{|question| Question.new(question)}
+  end
+
+  def author
+    User.find_by_id(@author_id)
+  end
+
+  def replies
+    Reply.find_by_question_id(@id)
   end
 
   def initialize(options)
@@ -98,7 +126,7 @@ class QuestionFollow
 end
 
 class Reply
-  attr_accessor :id, :subject_id, :parent_reply, :user_id, :body
+  attr_accessor :id, :question_id, :parent_reply, :user_id, :body
 
   def self.find_by_id(id)
     reply = QuestionsDatabase.instance.execute(<<-SQL, id)
@@ -113,9 +141,60 @@ class Reply
       Reply.new(reply.first) # user returns hash in an array
   end
 
+  def self.find_by_user_id(user_id)
+    replies = QuestionsDatabase.instance.execute(<<-SQL, user_id)
+      SELECT
+        *
+      FROM
+        replies
+      WHERE
+        replies.user_id = ?
+    SQL
+
+      replies = replies.map {|reply| Reply.new(reply)}
+  end
+
+  def self.find_by_question_id(question_id)
+    replies = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+      SELECT
+        *
+      FROM
+        replies
+      WHERE
+        replies.question_id = ?
+    SQL
+
+      replies = replies.map {|reply| Reply.new(reply)}
+  end
+
+  def author
+    User.find_by_id(@user_id)
+  end
+
+  def question
+    Question.find_by_id(@question_id)
+  end
+
+  def parent_reply
+    Question.find_by_id(@parent_reply)
+  end
+
+  def child_replies
+    children = QuestionsDatabase.instance.execute(<<-SQL, @id)
+      SELECT
+        *
+      FROM
+        replies
+      WHERE
+        replies.parent_reply = ?
+    SQL
+
+    children = children.map {|reply| Reply.new(reply)}
+  end
+
   def initialize(options)
     @id = options["id"]
-    @subject_id = options["question_id"]
+    @question_id = options["question_id"]
     @parent_reply = options["parent_reply"]
     @user_id = options["user_id"]
     @body = options["body"]
