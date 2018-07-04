@@ -63,7 +63,9 @@ INSERT INTO
   users (fname, lname)
 VALUES
   ("Jeremiah", "Steele"),
-  ("Brian", "Bui");
+  ("Brian", "Bui"),
+  ("Liz", "Houle"),
+  ("Willie", "Brown");
 
 
 INSERT INTO
@@ -81,3 +83,14 @@ VALUES
   (2, NULL, 2, "Another parent reply!"),
   (1, 1, 2, "First child of 1"),
   (1, 1, 1, "Second child, commenting on my own post.");
+
+
+INSERT INTO
+  question_follows(user_id, question_id)
+VALUES
+  (1, 1),
+  (2, 1),
+  (2, 2),
+  (1, 2),
+  (1, 3),
+  (1, 4);

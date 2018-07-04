@@ -49,6 +49,10 @@ class User
     Reply.find_by_user_id(@id)
   end
 
+  def followed_questions
+    QuestionFollow.followed_questions_for_user_id(@id)
+  end
+
   def initialize(options)
     @id = options["id"]
     @fname = options["fname"]
@@ -92,6 +96,14 @@ class Question
     Reply.find_by_question_id(@id)
   end
 
+  def followers
+    QuestionFollow.followers_for_question_id(@id)
+  end
+
+  def self.most_followed(n)
+    QuestionFollow.most_followed_questions(n)
+  end
+
   def initialize(options)
     @id = options["id"]
     @title= options["title"]
@@ -115,6 +127,57 @@ class QuestionFollow
     SQL
 
       QuestionFollow.new(follow.first) # user returns hash in an array
+  end
+
+  def self.followers_for_question_id(question_id)
+    follow = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+      SELECT
+        users.id, users.fname, users.lname
+      FROM
+        users
+      JOIN question_follows
+        ON users.id = question_follows.user_id
+      WHERE
+        question_follows.question_id = ?
+      SQL
+
+      follow = follow.map{|user| User.new(user)}
+  end
+
+  def self.followed_questions_for_user_id(user_id)
+    question = QuestionsDatabase.instance.execute(<<-SQL, user_id)
+    SELECT
+      questions.id, questions.title, questions.body, questions.author_id
+    FROM
+      questions
+    JOIN question_follows
+      ON question_follows.question_id = questions.id
+    WHERE
+      question_follows.user_id = ?
+    SQL
+
+      question = question.map{|question| Question.new(question)}
+  end
+
+  def self.most_followed_questions(n)
+    questions = QuestionsDatabase.instance.execute(<<-SQL, n)
+    SELECT
+      questions.id, questions.title, questions.body, questions.author_id
+    FROM
+      questions
+    JOIN
+      question_follows
+    ON
+      question_follows.question_id = questions.id
+    GROUP BY
+      question_follows.question_id
+    ORDER BY
+      COUNT(*)
+    LIMIT ?
+
+    SQL
+
+    questions = questions.map{|question| Question.new(question)}
   end
 
   def initialize(options)
