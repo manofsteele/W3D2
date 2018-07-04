@@ -53,6 +53,10 @@ class User
     QuestionFollow.followed_questions_for_user_id(@id)
   end
 
+  def liked_questions
+    QuestionLikes.liked_questions_for_user_id(@id)
+  end
+
   def initialize(options)
     @id = options["id"]
     @fname = options["fname"]
@@ -98,6 +102,14 @@ class Question
 
   def followers
     QuestionFollow.followers_for_question_id(@id)
+  end
+
+  def likers
+    QuestionLikes.likers_for_question_id(@id)
+  end
+
+  def num_likes
+    QuestionLikes.num_likes_for_question_id(@id)
   end
 
   def self.most_followed(n)
@@ -279,6 +291,51 @@ class QuestionLike
     SQL
 
       QuestionLike.new(like.first) # user returns hash in an array
+  end
+
+  def self.likers_for_question_id(question_id)
+    likers = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+      SELECT
+        users.id, users.fname, users.lname
+      FROM
+        users
+      JOIN
+        question_likes
+      ON
+        users.id = question_likes.user_id
+      WHERE
+        question_likes.question_id = question_id
+      SQL
+
+      likers = likers.map{|user| User.new(user)}
+  end
+
+  def self.num_likes_for_question_id(question_id)
+    num_likes = QuestionsDatabase.instance.execute(<<-SQL, question_id)
+      SELECT
+        COUNT(*)
+      FROM
+        question_likes
+      WHERE
+        question_likes.question_id = question_id
+      SQL
+
+      num_likes.first
+  end
+
+  def self.liked_questions_for_user_id(user_id)
+     liked_questions = QuestionsDatabase.instance.execute(<<-SQL, user_id)
+       SELECT
+         question.id, question.title, question.body, question.author_id
+       FROM
+         questions
+       JOIN
+         question_likes
+       ON
+         questions.id = question_likes.question_id
+       SQL
+
+      liked_questions.map! {|question| Question.new(question)}
   end
 
   def initialize(options)
